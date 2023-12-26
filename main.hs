@@ -1,20 +1,36 @@
 -- PFL 2023/24 - Haskell practical assignment quickstart
 
+import Data.List
+
 -- Part 1
 
 -- Do not modify our definition of Inst and Code
 data Inst =
   Push Integer | Add | Mult | Sub | Tru | Fals | Equ | Le | And | Neg | Fetch String | Store String | Noop |
-  Branch Code Code | Loop Code Code
+  Branch Code Code | Loop Code Code 
   deriving Show
 type Code = [Inst]
 
--- createEmptyStack :: Stack
-createEmptyStack = undefined -- TODO, Uncomment the function signature after defining Stack
+data StackTypes =
+  Int Integer | FF | TT 
+  deriving Show
+type Stack = [StackTypes]
 
--- stack2Str :: Stack -> String
-stack2Str = undefined -- TODO, Uncomment all the other function type declarations as you implement them
+createEmptyStack :: Stack
+createEmptyStack = [] 
+-- depois temos de usar com o do para usar tipo :
+-- main = do
+--    let stackAtual = createEmptyStack
 
+
+
+
+stack2Str :: Stack -> String
+stack2Str stack = intercalate "," (map stackEleStr stack)
+  where
+      stackEleStr FF = "False"
+      stackEleStr TT = "True"
+      stackEleStr (Int n) = show n
 -- createEmptyState :: State
 createEmptyState = undefined -- TODO, Uncomment the function signature after defining State
 
@@ -29,7 +45,7 @@ testAssembler :: Code -> (String, String)
 testAssembler code = (stack2Str stack, state2Str state)
   where (_,stack,state) = run(code, createEmptyStack, createEmptyState)
 
--- Examples:
+-- Examples: 
 -- testAssembler [Push 10,Push 4,Push 3,Sub,Mult] == ("-10","")
 -- testAssembler [Fals,Push 3,Tru,Store "var",Store "a", Store "someVar"] == ("","a=3,someVar=False,var=True")
 -- testAssembler [Fals,Store "var",Fetch "var"] == ("False","var=False")
