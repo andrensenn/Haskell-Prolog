@@ -95,6 +95,12 @@ run ((Neg):code, x:stack, state)
     | x == TT = run (code, (FF):stack, state)
 --nega o valor no topo da stack e coloca-o a stack
 
+run ((And):code, TT:TT:stack, state) = run (code, TT:stack, state)
+run ((And):code, FF:TT:stack, state) = run (code, FF:stack, state)
+run ((And):code, TT:FF:stack, state) = run (code, FF:stack, state)
+run ((And):code, FF:FF:stack, state) = run (code, FF:stack, state)
+--compara os dois topmost elements da stack (booleanos) e realiza a um e lógico
+
 -- To help you test your assembler
 testAssembler :: Code -> (String, String)
 testAssembler code = (stack2Str stack, state2Str state)
