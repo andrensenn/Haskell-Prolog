@@ -13,14 +13,12 @@ type Code = [Inst]
 
 data StackTypes =
   Int Integer | FF | TT 
-  deriving Show
+  deriving (Show, Eq, Ord)
 type Stack = [StackTypes]
 
 createEmptyStack :: Stack
 createEmptyStack = [] 
--- depois temos de usar com o do para usar tipo :
--- main = do
---    let stackAtual = createEmptyStack
+--cria um stack vazia
 
 stack2Str :: Stack -> String
 stack2Str stack = intercalate "," (map stackEleStr stack)
@@ -58,6 +56,16 @@ run ((Fals):code, stack, state) = run (code, (FF):stack, state)
 
 run ((Tru):code, stack, state) = run (code, (TT):stack, state)
 --adiciona FF á stack
+
+run ((Equ):code, x:y:stack, state) 
+  | x == y = run (code, (TT):stack, state)
+  | x /= y = run (code, (FF):stack, state)
+--compara os dois topmost elements da stack e 
+--mete TT se verdade na stack e FF otherwise
+
+run ((Le):code, x:y:stack, state)
+  | x <= y = run (code, (TT):stack, state)
+  | x > y = run (code, (FF):stack, state)
 
 -- To help you test your assembler
 testAssembler :: Code -> (String, String)
