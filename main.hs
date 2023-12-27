@@ -90,6 +90,11 @@ run ((Le):code, x:y:stack, state)
   | x <= y = run (code, (TT):stack, state)
   | x > y = run (code, (FF):stack, state)
 
+run ((Neg):code, x:stack, state)
+    | x == FF = run (code, (TT):stack, state)
+    | x == TT = run (code, (FF):stack, state)
+--nega o valor no topo da stack e coloca-o a stack
+
 -- To help you test your assembler
 testAssembler :: Code -> (String, String)
 testAssembler code = (stack2Str stack, state2Str state)
