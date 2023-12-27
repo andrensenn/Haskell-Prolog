@@ -29,10 +29,26 @@ stack2Str stack = intercalate "," (map stackEleStr stack)
 
 
 -- createEmptyState :: State
-createEmptyState = undefined -- TODO, Uncomment the function signature after defining State
+createEmptyState = [] -- TODO, Uncomment the function signature after defining State
 
 -- state2Str :: State -> String
-state2Str = undefined -- TODO
+state2Str state = intercalate "," (map stateEleStr state)
+  where
+      stateEleStr (a,b) = a ++ "=" ++ show b
+
+--findNinState :: Eq a => Show b => [(a, b)] -> a -> Maybe b
+findNinState state n = lookup n state
+
+--updateNinState :: Eq a => [(a, b)] -> a -> b -> [(a, b)]
+updateNinState state n newVal = case lookupIndex state n of
+  Just index -> updateAtIndex state index (\(key, _) -> (key, newVal))
+  Nothing    -> state ++ [(n, newVal)]
+
+lookupIndex :: Eq a => [(a, b)] -> a -> Maybe Int
+lookupIndex state n = elemIndex n (map fst state)
+
+updateAtIndex :: [a] -> Int -> (a -> a) -> [a]
+updateAtIndex lst index f = take index lst ++ [f (lst !! index)] ++ drop (index + 1) lst
 
 --run :: (Code, Stack, State) -> (Code, Stack, State)
 
@@ -40,6 +56,12 @@ run ([], stack, state) = ([],stack, state)
 -- caso de não haver mais inst
 
 run ((Push n):code, stack, state) = run(code, (Int n):stack, state)
+-- dar push a n
+
+run ((Fetch n):code, stack, state) = run(code, (Int (findNinState state n)):stack, state)
+-- dar push a n
+
+run ((Store n):code, (Int a):stack, state) = run(code, stack, (updateNinState state n a))
 -- dar push a n
 
 run ((Add):code, (Int x):(Int y):stack, state) = run(code, (Int (x+y)):stack, state)
