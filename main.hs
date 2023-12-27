@@ -22,23 +22,42 @@ createEmptyStack = []
 -- main = do
 --    let stackAtual = createEmptyStack
 
-
-
-
 stack2Str :: Stack -> String
 stack2Str stack = intercalate "," (map stackEleStr stack)
   where
       stackEleStr FF = "False"
       stackEleStr TT = "True"
       stackEleStr (Int n) = show n
+
+
 -- createEmptyState :: State
 createEmptyState = undefined -- TODO, Uncomment the function signature after defining State
 
 -- state2Str :: State -> String
 state2Str = undefined -- TODO
 
--- run :: (Code, Stack, State) -> (Code, Stack, State)
-run = undefined -- TODO
+--run :: (Code, Stack, State) -> (Code, Stack, State)
+
+run ([], stack, state) = ([],stack, state) 
+-- caso de não haver mais inst
+
+run ((Push n):code, stack, state) = run(code, (Int n):stack, state)
+-- dar push a n
+
+run ((Add):code, (Int x):(Int y):stack, state) = run(code, (Int (x+y)):stack, state)
+-- adiciona x a y e adiciona o resultado á stack
+
+run ((Sub):code, (Int x):(Int y):stack, state) = run(code, (Int (x-y)):stack, state)
+-- subtrair x a y e adiciona o resultado á stack
+
+run ((Mult):code, (Int x):(Int y):stack, state) = run(code, (Int (x*y)):stack, state)
+--multiplica x por y e adiciona o resultado á stack
+
+run ((Fals):code, stack, state) = run (code, (FF):stack, state)
+--adiciona FF á stack
+
+run ((Tru):code, stack, state) = run (code, (TT):stack, state)
+--adiciona FF á stack
 
 -- To help you test your assembler
 testAssembler :: Code -> (String, String)
