@@ -1,6 +1,7 @@
 -- PFL 2023/24 - Haskell practical assignment quickstart
 
 import Data.List
+import Data.Ord
 
 -- Part 1
 
@@ -29,13 +30,18 @@ stack2Str stack = intercalate "," (map stackEleStr stack)
       stackEleStr (Int n) = show n
 
 
--- createEmptyState :: State
-createEmptyState = [] -- TODO, Uncomment the function signature after defining State
+createEmptyState :: State
+createEmptyState = [] 
 
--- state2Str :: State -> String
-state2Str state = intercalate "," (map stateEleStr state)
+state2Str :: State -> String
+state2Str :: [(String, StackTypes)] -> String
+state2Str state = intercalate "," (map stateEleStr sortedState)
   where
-      stateEleStr (a,b) = a ++ "=" ++ show b
+    stackEleStr (a, Int n) = a ++ "=" ++ show n
+    stateEleStr (a, FF) = a ++ "=False"
+    stateEleStr (a, TT) = a ++ "=True"  
+    sortedState = sortBy (comparing fst) state
+      --tem de ser passado para ordem alphabetica
 
 --findNinState :: Show b => State -> String -> Maybe StackTypes
 findNinState state n = lookup n state
@@ -101,7 +107,7 @@ run ((And):code, (TT):(FF):stack, state) = run (code, (FF):stack, state)
 run ((And):code, (FF):(FF):stack, state) = run (code, (FF):stack, state)
 --compara os dois topmost elements da stack (booleanos) e realiza a um e lógico
 
-run ((Noop):code, stack, state) = ([],stack, state)
+run ((Noop):code, stack, state) = (code,stack, state)
 --não percebo a utilidade disto, mas tava no enunciado..
 
 run ((Branch c1 c2):code, TT:stack, state) = run(c1, stack, state)
@@ -155,6 +161,7 @@ testParser programCode = (stack2Str stack, state2Str state)
 -- testParser "x := 5; x := x - 1;" == ("","x=4")
 -- testParser "if (not True and 2 <= 5 = 3 == 4) then x :=1 else y := 2" == ("","y=2")
 -- testParser "x := 42; if x <= 43 then x := 1; else (x := 33; x := x+1;)" == ("","x=1")
+--  push 43, store x, push 43, fecth x, le, branch (then, else)
 -- testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1;" == ("","x=2")
 -- testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1; z := x+x;" == ("","x=2,z=4")
 -- testParser "x := 2; y := (x - 3)*(4 + 2*3); z := x +x*(2);" == ("","x=2,y=-10,z=6")
