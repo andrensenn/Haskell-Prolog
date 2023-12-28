@@ -101,6 +101,19 @@ run ((And):code, (TT):(FF):stack, state) = run (code, (FF):stack, state)
 run ((And):code, (FF):(FF):stack, state) = run (code, (FF):stack, state)
 --compara os dois topmost elements da stack (booleanos) e realiza a um e lógico
 
+run ((Noop):code, stack, state) = ([],stack, state)
+--não percebo a utilidade disto, mas tava no enunciado..
+
+run ((Branch c1 c2):code, TT:stack, state) = run(c1, stack, state)
+run ((Branch c1 c2):code, FF:stack, state) = run(c2, stack, state)
+--se o primeiro valor da stack for TT faz c1, se for FF faz c2
+
+run ((Loop c1 c2):code, stack , state) = run(c1++[Branch newCode [Noop]], stack, state)
+  where
+    newCode = c2++[Loop c1 c2]                    
+
+--se V entao vai para c2, otherwise é recursiva
+
 -- To help you test your assembler
 testAssembler :: Code -> (String, String)
 testAssembler code = (stack2Str stack, state2Str state)
