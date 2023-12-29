@@ -100,10 +100,10 @@ run ((Neg):code, x:stack, state)
     | x == TT = run (code, (FF):stack, state)
 --nega o valor no topo da stack e coloca-o a stack
 
-run ((And):code, (TT):(TT):stack, state) = run (code, (TT):stack, state)
-run ((And):code, (FF):(TT):stack, state) = run (code, (FF):stack, state)
-run ((And):code, (TT):(FF):stack, state) = run (code, (FF):stack, state)
-run ((And):code, (FF):(FF):stack, state) = run (code, (FF):stack, state)
+run ((And):code, x:y:stack, state) 
+  | x == TT && y == FF = run (code, (TT):stack, state)
+  | x == FF || y == FF = run (code, (FF):stack, state)
+  | otherwise = error "Run-time error"
 --compara os dois topmost elements da stack (booleanos) e realiza a um e lógico
 
 run ((Noop):code, stack, state) = (code,stack, state)
@@ -134,6 +134,12 @@ testAssembler code = (stack2Str stack, state2Str state)
 -- testAssembler [Push (-20),Push (-21), Le] == ("True","")
 -- testAssembler [Push 5,Store "x",Push 1,Fetch "x",Sub,Store "x"] == ("","x=4")
 -- testAssembler [Push 10,Store "i",Push 1,Store "fact",Loop [Push 1,Fetch "i",Equ,Neg] [Fetch "i",Fetch "fact",Mult,Store "fact",Push 1,Fetch "i",Sub,Store "i"]] == ("","fact=3628800,i=1")
+-- testAssembler [Push 1, Push 2, And]
+-- You should get an exception with the string: "Run-time error"
+-- If you test:
+-- testAssembler [Tru,Tru,Store "y", Fetch "x",Tru]
+-- You should get an exception with the string: "Run-time error"
+
 
 -- Part 2
 
@@ -194,6 +200,6 @@ testParser programCode = (stack2Str stack, state2Str state)
 -- testParser "x := 2; y := (x - 3)*(4 + 2*3); z := x +x*(2);" == ("","x=2,y=-10,z=6")
 -- testParser "i := 10; fact := 1; while (not(i == 1)) do (fact := fact * i; i := i - 1;);" == ("","fact=3628800,i=1")
 
-main :: IO ()
-main = do
-    putStrLn "Hello, World!"
+--main :: IO ()
+--main = do
+--    putStrLn "Hello, World!"
