@@ -176,8 +176,58 @@ compile stms = concatMap compStm stms
     compStm (LoopS be stm) = [Loop (compB be) (compile stm)]
     compStm (AssignVar var ae) = compA ae ++ [Store var]
 
+data Token =
+    IntTok Integer -- number
+    | VarTok String -- variable name
+    | AssignTok -- :=
+    | AddTok -- +
+    | SubTok -- -
+    | MultTok -- *
+    | OpenTok -- (
+    | CloseTok -- )
+    | BreakTok -- ;
+    | EqualTok -- ==
+    | TrueTok -- True
+    | FalseTok -- False
+    | IfTok -- if
+    | ThenTok -- then
+    | ElseTok -- else
+    | WhileTok -- while
+    | DoTok -- do
+    | NotTok -- not
+    deriving Show
+
+data StringToken =
+  String | Token 
+  deriving Show
+
 -- parse :: String -> Program
-parse = undefined -- TODO
+parse str = parse_aux (parse_tokens str []) []
+
+-- parse_tokens :: String -> [StringToken] -> [StringToken]
+parse_tokens (' ':rest) tokens = parse_tokens rest tokens
+parse_tokens ('\n':rest) tokens = parse_tokens rest tokens
+parse_tokens ('\t':rest) tokens = parse_tokens rest tokens
+parse_tokens ((Int a):rest) tokens = parse_tokens rest (tokens:(IntTok a))
+parse_tokens ((Int a):rest) tokens = parse_tokens rest (tokens:(IntTok a)) -- Variable???
+parse_tokens (":=":rest) tokens = parse_tokens rest (tokens:AssignTok)
+parse_tokens ("+":rest) tokens = parse_tokens rest (tokens:AddTok)
+parse_tokens ("-":rest) tokens = parse_tokens rest (tokens:SubTok)
+parse_tokens ("*":rest) tokens = parse_tokens rest (tokens:MultTok)
+parse_tokens ("(":rest) tokens = parse_tokens rest (tokens:OpenTok)
+parse_tokens (")":rest) tokens = parse_tokens rest (tokens:CloseTok)
+parse_tokens (";":rest) tokens = parse_tokens rest (tokens:BreakTok)
+parse_tokens ("==":rest) tokens = parse_tokens rest (tokens:EqualTok)
+parse_tokens ("True":rest) tokens = parse_tokens rest (tokens:TrueTok)
+parse_tokens ("False":rest) tokens = parse_tokens rest (tokens:FalseTok)
+parse_tokens ("if":rest) tokens = parse_tokens rest (tokens:IfTok)
+parse_tokens ("then":rest) tokens = parse_tokens rest (tokens:ThenTok)
+parse_tokens ("else":rest) tokens = parse_tokens rest (tokens:ElseTok)
+parse_tokens ("while":rest) tokens = parse_tokens rest (tokens:WhileTok)
+parse_tokens ("do":rest) tokens = parse_tokens rest (tokens:DoTok)
+parse_tokens ("not":rest) tokens = parse_tokens rest (tokens:NotTok)
+
+-- parse_aux :: [StringToken] -> Program -> Program
 
 -- To help you test your parser
 testParser :: String -> (String, String)
