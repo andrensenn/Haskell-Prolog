@@ -198,36 +198,45 @@ data Token =
     deriving Show
 
 data StringToken =
-  String | Token 
+  Str String | Tok Token 
   deriving Show
 
 -- parse :: String -> Program
-parse str = parse_aux (parse_tokens str []) []
+parse str = parse_aux (parse_tokens (parse_tokens_aux str [])) []
 
--- parse_tokens :: String -> [StringToken] -> [StringToken]
-parse_tokens (' ':rest) tokens = parse_tokens rest tokens
-parse_tokens ('\n':rest) tokens = parse_tokens rest tokens
-parse_tokens ('\t':rest) tokens = parse_tokens rest tokens
-parse_tokens ((Int a):rest) tokens = parse_tokens rest (tokens:(IntTok a))
-parse_tokens ((Int a):rest) tokens = parse_tokens rest (tokens:(IntTok a)) -- Variable???
-parse_tokens (":=":rest) tokens = parse_tokens rest (tokens:AssignTok)
-parse_tokens ("+":rest) tokens = parse_tokens rest (tokens:AddTok)
-parse_tokens ("-":rest) tokens = parse_tokens rest (tokens:SubTok)
-parse_tokens ("*":rest) tokens = parse_tokens rest (tokens:MultTok)
-parse_tokens ("(":rest) tokens = parse_tokens rest (tokens:OpenTok)
-parse_tokens (")":rest) tokens = parse_tokens rest (tokens:CloseTok)
-parse_tokens (";":rest) tokens = parse_tokens rest (tokens:BreakTok)
-parse_tokens ("==":rest) tokens = parse_tokens rest (tokens:EqualTok)
-parse_tokens ("True":rest) tokens = parse_tokens rest (tokens:TrueTok)
-parse_tokens ("False":rest) tokens = parse_tokens rest (tokens:FalseTok)
-parse_tokens ("if":rest) tokens = parse_tokens rest (tokens:IfTok)
-parse_tokens ("then":rest) tokens = parse_tokens rest (tokens:ThenTok)
-parse_tokens ("else":rest) tokens = parse_tokens rest (tokens:ElseTok)
-parse_tokens ("while":rest) tokens = parse_tokens rest (tokens:WhileTok)
-parse_tokens ("do":rest) tokens = parse_tokens rest (tokens:DoTok)
-parse_tokens ("not":rest) tokens = parse_tokens rest (tokens:NotTok)
+parse_tokens :: [StringToken] -> [StringToken]
+parse_tokens [] = []
+parse_tokens (Str s : rest) =
+  case reads s :: [(Int, String)] of
+    [(n, "")] -> Tok (IntTok (fromIntegral n)) : parse_tokens rest
+    _         -> Tok (VarTok s) : parse_tokens rest
+parse_tokens (Tok t : rest) = Tok t : parse_tokens rest
+
+parse_tokens_aux :: String -> [StringToken] -> [StringToken]
+parse_tokens_aux "" tokens = tokens
+parse_tokens_aux (' ':rest) tokens = parse_tokens_aux rest tokens
+parse_tokens_aux ('\n':rest) tokens = parse_tokens_aux rest tokens
+parse_tokens_aux ('\t':rest) tokens = parse_tokens_aux rest tokens
+parse_tokens_aux (':':'=':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok AssignTok])
+parse_tokens_aux ('+':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok AddTok])
+parse_tokens_aux ('-':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok SubTok])
+parse_tokens_aux ('*':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok MultTok])
+parse_tokens_aux ('(':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok OpenTok])
+parse_tokens_aux (')':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok CloseTok])
+parse_tokens_aux (';':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok BreakTok])
+parse_tokens_aux ('=':'=':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok EqualTok])
+parse_tokens_aux ('T':'r':'u':'e':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok TrueTok])
+parse_tokens_aux ('F':'a':'l':'s':'e':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok FalseTok])
+parse_tokens_aux ('i':'f':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok IfTok])
+parse_tokens_aux ('t':'h':'e':'n':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok ThenTok])
+parse_tokens_aux ('e':'l':'s':'e':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok ElseTok])
+parse_tokens_aux ('w':'h':'i':'l':'e':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok WhileTok])
+parse_tokens_aux ('d':'o':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok DoTok])
+parse_tokens_aux ('n':'o':'t':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok NotTok])
+parse_tokens_aux (c:rest) tokens = parse_tokens_aux rest (tokens ++ [Str [c]])
 
 -- parse_aux :: [StringToken] -> Program -> Program
+parse_aux = undefined
 
 -- To help you test your parser
 testParser :: String -> (String, String)
