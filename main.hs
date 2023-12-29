@@ -139,11 +139,11 @@ testAssembler code = (stack2Str stack, state2Str state)
 
 -- TODO: Define the types Aexp, Bexp, Stm and Program
 data Aexp =
-  Num Integer | Var String | AddA Aexp Aexp | SubA Aexp Aexp | MultA Aexp Aexp
+  Int Integer | Var String | AddAexp Aexp Aexp | SubAexp Aexp Aexp | MultAexp Aexp Aexp
   deriving Show
 
 data Bexp =
-  EquArithmB Aexp Aexp | LeB Aexp Aexp | AndB Bexp Bexp | EquBoolB Bexp Bexp | NegB Bexp | TruB | FalsB
+  EquAexp Aexp Aexp | LeAexp Aexp Aexp | AndBexp Bexp Bexp | EquBexp Bexp Bexp | NegBexp Bexp | TruB | FalsB
   deriving Show
 
 data Stm =
@@ -154,18 +154,18 @@ type Program = [Stm]
 
 
 -- compA :: Aexp -> Code
-compA (Num n) = [Push n]
+compA (Int n) = [Push n]
 compA (Var a) = [Fetch a]
-compA (AddA e1 e2) = compA e2 ++ compA e1 ++ [Add]
-compA (SubA e1 e2) = compA e2 ++ compA e1 ++ [Sub]
-compA (MultA e1 e2) = compA e2 ++ compA e1 ++ [Mult]
+compA (AddAexp e1 e2) = compA e2 ++ compA e1 ++ [Add]
+compA (SubAexp e1 e2) = compA e2 ++ compA e1 ++ [Sub]
+compA (MultAexp e1 e2) = compA e2 ++ compA e1 ++ [Mult]
 
 -- compB :: Bexp -> Code
-compB (EquArithmB e1 e2) = compA e2 ++ compA e1 ++ [Equ]
-compB (LeB e1 e2) = compA e2 ++ compA e1 ++ [Le]
-compB (AndB e1 e2) = compB e2 ++ compB e1 ++ [And]
-compB (EquBoolB e1 e2) = compB e2 ++ compB e1 ++ [Equ]
-compB (NegB e) = compB e ++ [Neg]
+compB (EquAexp e1 e2) = compA e2 ++ compA e1 ++ [Equ]
+compB (LeAexp e1 e2) = compA e2 ++ compA e1 ++ [Le]
+compB (AndBexp e1 e2) = compB e2 ++ compB e1 ++ [And]
+compB (EquBexp e1 e2) = compB e2 ++ compB e1 ++ [Equ]
+compB (NegBexp e) = compB e ++ [Neg]
 compB (TruB) = [Tru]
 compB (FalsB) = [Fals]
 
