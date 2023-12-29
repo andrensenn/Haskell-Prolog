@@ -66,7 +66,7 @@ run ((Push n):code, stack, state) = run(code, (Int n):stack, state)
 
 run ((Fetch n):code, stack, state) = case findNinState state n of
     Just value -> run(code, value:stack, state)
-    noting -> run(code, stack, state)
+    Nothing -> error "Run-time error"
 
 run ((Store n):code, a:stack, state) = run(code, stack, (updateNinState state n a))
 
@@ -88,16 +88,19 @@ run ((Tru):code, stack, state) = run (code, (TT):stack, state)
 run ((Equ):code, x:y:stack, state) 
   | x == y = run (code, (TT):stack, state)
   | x /= y = run (code, (FF):stack, state)
+  | otherwise = error "Run-time error"
 --compara os dois topmost elements da stack e 
 --mete TT se verdade na stack e FF otherwise
 
 run ((Le):code, x:y:stack, state)
   | x <= y = run (code, (TT):stack, state)
   | x > y = run (code, (FF):stack, state)
+  | otherwise = error "Run-time error"
 
 run ((Neg):code, x:stack, state)
     | x == FF = run (code, (TT):stack, state)
     | x == TT = run (code, (FF):stack, state)
+    | otherwise = error "Run-time error"
 --nega o valor no topo da stack e coloca-o a stack
 
 run ((And):code, x:y:stack, state) 
