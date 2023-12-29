@@ -139,7 +139,7 @@ testAssembler code = (stack2Str stack, state2Str state)
 
 -- TODO: Define the types Aexp, Bexp, Stm and Program
 data Aexp =
-  Int Integer | Var String | AddAexp Aexp Aexp | SubAexp Aexp Aexp | MultAexp Aexp Aexp
+  Val Integer | Var String | AddAexp Aexp Aexp | SubAexp Aexp Aexp | MultAexp Aexp Aexp
   deriving Show
 
 data Bexp =
@@ -154,7 +154,7 @@ type Program = [Stm]
 
 
 -- compA :: Aexp -> Code
-compA (Int n) = [Push n]
+compA (Val n) = [Push n]
 compA (Var a) = [Fetch a]
 compA (AddAexp e1 e2) = compA e2 ++ compA e1 ++ [Add]
 compA (SubAexp e1 e2) = compA e2 ++ compA e1 ++ [Sub]
