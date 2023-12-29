@@ -34,7 +34,6 @@ createEmptyState :: State
 createEmptyState = [] 
 
 state2Str :: State -> String
-state2Str :: [(String, StackTypes)] -> String
 state2Str state = intercalate "," (map stateEleStr sortedState)
   where
     stackEleStr (a, Int n) = a ++ "=" ++ show n
@@ -139,15 +138,43 @@ testAssembler code = (stack2Str stack, state2Str state)
 -- Part 2
 
 -- TODO: Define the types Aexp, Bexp, Stm and Program
+data Aexp =
+  Num Integer | Var String | AddA Aexp Aexp | SubA Aexp Aexp | MultA Aexp Aexp
+  deriving Show
+
+data Bexp =
+  EquArithmB Aexp Aexp | LeB Aexp Aexp | AndB Bexp Bexp | EquBoolB Bexp Bexp | NegB Bexp | TruB | FalsB
+  deriving Show
+
+data Stm =
+  BranchS Bexp [Stm] [Stm] | LoopS Bexp [Stm] | AssignVar String Aexp
+  deriving Show
+
+type Program = [Stm]
+
 
 -- compA :: Aexp -> Code
-compA = undefined -- TODO
+compA (Num n) = [Push n]
+compA (Var a) = [Fetch a]
+compA (AddA e1 e2) = compA e2 ++ compA e1 ++ [Add]
+compA (SubA e1 e2) = compA e2 ++ compA e1 ++ [Sub]
+compA (MultA e1 e2) = compA e2 ++ compA e1 ++ [Mult]
 
 -- compB :: Bexp -> Code
-compB = undefined -- TODO
+compB (EquArithmB e1 e2) = compA e2 ++ compA e1 ++ [Equ]
+compB (LeB e1 e2) = compA e2 ++ compA e1 ++ [Le]
+compB (AndB e1 e2) = compB e2 ++ compB e1 ++ [And]
+compB (EquBoolB e1 e2) = compB e2 ++ compB e1 ++ [Equ]
+compB (NegB e) = compB e ++ [Neg]
+compB (TruB) = [Tru]
+compB (FalsB) = [Fals]
 
 -- compile :: Program -> Code
-compile = undefined -- TODO
+compile stms = concatMap compStm stms
+  where
+    compStm (BranchS be stm1 stm2) = compB be ++ [Branch (compile stm1) (compile stm2)]
+    compStm (LoopS be stm) = [Loop (compB be) (compile stm)]
+    compStm (AssignVar var ae) = compA ae ++ [Store var]
 
 -- parse :: String -> Program
 parse = undefined -- TODO
@@ -166,3 +193,7 @@ testParser programCode = (stack2Str stack, state2Str state)
 -- testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1; z := x+x;" == ("","x=2,z=4")
 -- testParser "x := 2; y := (x - 3)*(4 + 2*3); z := x +x*(2);" == ("","x=2,y=-10,z=6")
 -- testParser "i := 10; fact := 1; while (not(i == 1)) do (fact := fact * i; i := i - 1;);" == ("","fact=3628800,i=1")
+
+main :: IO ()
+main = do
+    putStrLn "Hello, World!"
