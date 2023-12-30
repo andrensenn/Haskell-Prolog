@@ -104,7 +104,7 @@ run ((Neg):code, x:stack, state)
 --nega o valor no topo da stack e coloca-o a stack
 
 run ((And):code, x:y:stack, state) 
-  | x == TT && y == FF = run (code, (TT):stack, state)
+  | x == TT && y == TT = run (code, (TT):stack, state)
   | x == FF || y == FF = run (code, (FF):stack, state)
   | otherwise = error "Run-time error"
 --compara os dois topmost elements da stack (booleanos) e realiza a um e lógico
@@ -112,11 +112,11 @@ run ((And):code, x:y:stack, state)
 run ((Noop):code, stack, state) = (code,stack, state)
 --não percebo a utilidade disto, mas tava no enunciado..
 
-run ((Branch c1 c2):code, TT:stack, state) = run(c1, stack, state)
-run ((Branch c1 c2):code, FF:stack, state) = run(c2, stack, state)
+run ((Branch c1 c2):code, TT:stack, state) = run(c1:code, stack, state)
+run ((Branch c1 c2):code, FF:stack, state) = run(c2:code, stack, state)
 --se o primeiro valor da stack for TT faz c1, se for FF faz c2
 
-run ((Loop c1 c2):code, stack , state) = run(c1++[Branch newCode [Noop]], stack, state)
+run ((Loop c1 c2):code, stack , state) = run(c1++[Branch newCode [Noop]] ++ code, stack, state)
   where
     newCode = c2++[Loop c1 c2]                    
 
