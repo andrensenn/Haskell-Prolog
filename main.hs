@@ -112,8 +112,8 @@ run ((And):code, x:y:stack, state)
 run ((Noop):code, stack, state) = (code,stack, state)
 --não percebo a utilidade disto, mas tava no enunciado..
 
-run ((Branch c1 c2):code, TT:stack, state) = run(c1:code, stack, state)
-run ((Branch c1 c2):code, FF:stack, state) = run(c2:code, stack, state)
+run ((Branch c1 c2):code, TT:stack, state) = run(c1 ++ code, stack, state)
+run ((Branch c1 c2):code, FF:stack, state) = run(c2 ++ code, stack, state)
 --se o primeiro valor da stack for TT faz c1, se for FF faz c2
 
 run ((Loop c1 c2):code, stack , state) = run(c1++[Branch newCode [Noop]] ++ code, stack, state)
