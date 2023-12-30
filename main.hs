@@ -195,7 +195,8 @@ data Token =
     | OpenTok -- (
     | CloseTok -- )
     | BreakTok -- ;
-    | EqualTok -- ==
+    | EqualBTok -- =
+    | EqualATok -- ==
     | TrueTok -- True
     | FalseTok -- False
     | IfTok -- if
@@ -239,7 +240,8 @@ parse_tokens_aux ('*':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok MultT
 parse_tokens_aux ('(':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok OpenTok])
 parse_tokens_aux (')':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok CloseTok])
 parse_tokens_aux (';':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok BreakTok])
-parse_tokens_aux ('=':'=':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok EqualTok])
+parse_tokens_aux ('=':'=':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok EqualATok])
+parse_tokens_aux ('=':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok EqualBTok])
 parse_tokens_aux ('T':'r':'u':'e':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok TrueTok])
 parse_tokens_aux ('F':'a':'l':'s':'e':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok FalseTok])
 parse_tokens_aux ('i':'f':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok IfTok])
