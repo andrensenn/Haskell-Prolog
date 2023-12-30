@@ -205,7 +205,7 @@ data Token =
     | WhileTok -- while
     | DoTok -- do
     | NotTok -- not
-    deriving Show
+    deriving (Show, Eq)
 
 data StringToken =
   Str String | Tok Token 
@@ -252,8 +252,41 @@ parse_tokens_aux ('d':'o':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok D
 parse_tokens_aux ('n':'o':'t':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok NotTok])
 parse_tokens_aux (c:rest) tokens = parse_tokens_aux rest (tokens ++ [Str [c]])
 
+
+parse_until :: [Token] -> Token -> [Token] 
+parse_until [] _ = [] 
+parse_until (x:xs) obj
+  | x == obj = []
+  | otherwise = x:parse_until xs obj
+
+parse_after :: [Token] -> Token -> [Token] 
+parse_after [] _ = [] 
+parse_after (x:xs) obj
+  | x == obj = xs
+  | otherwise = parse_after xs obj
+
+parse_aexp :: [Token] -> Aexp
+parse_aexp (IntTok x:[]) = (Val x)
+parse_aexp (IntTok x:SubTok:IntTok y:[]) = (SubAexp (Val x) (Val y))
+parse_aexp (IntTok x:AddTok:IntTok y:[]) = (AddAexp (Val x) (Val y))
+parse_aexp (IntTok x:MultTok:IntTok y:[]) = (MultAexp (Val x) (Val y))
+
+parse_bexp :: [Token] ->Bexp
+parse_bexp(VarTok var:EqualATok:IntTok val:[]) = (EquAexp (Var var) (Val val))
+
 parse_aux :: [Token] -> Program -> Program
-parse_aux = undefined
+parse_aux [] program = program 
+parse_aux (VarTok name:AssignTok:rest) program = parse_aux cont [AssignVar name (parse_aexp (untilBreak))]++program
+  where 
+    untilBreak = parse_until rest BreakTok
+    cont = parse_after rest BreakTok
+--  parse_aux (IfTok:rest) program = [BranchS (parse_bexp beforeThen) (parse_aux thenSmt) (parse_aux elseSmt)]++program
+--  where 
+--    beforeThen = parse_until rest ThenTok
+--    afterThen = parse_after rest ThenTok
+--    thenSmt = parse_until afterThen BreakTok
+--    elseSmt = parse_after thenSmt ElseTok
+
 
 -- To help you test your parser
 testParser :: String -> (String, String)
@@ -262,6 +295,7 @@ testParser programCode = (stack2Str stack, state2Str state)
 
 -- Examples:
 -- testParser "x := 5; x := x - 1;" == ("","x=4")
+-- [VarTok x, AssignTok, ValTok 5, VarTok x, AssignTok x, VarTok x, SubTok, ValTok 5]
 -- [AssignVar x 5, AssignVar x (SubAexp x 1)]
 -- testParser "x := 0 - 2;" == ("","x=-2")
 -- [AssingVar x ( SubAexp 0 2)]
