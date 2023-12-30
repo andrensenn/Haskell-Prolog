@@ -45,18 +45,18 @@ state2Str state = intercalate "," (map stateEleStr sortedState)
 --findNinState :: Show b => State -> String -> Maybe StackTypes
 findNinState state n = lookup n state
 
---updateNinState :: State -> String -> StackTypes -> State
+updateNinState :: State -> String -> StackTypes -> State
 updateNinState state n newVal = case lookupIndex state n of
   Just index -> updateAtIndex state index (\(key, _) -> (key, newVal))
   Nothing    -> state ++ [(n, newVal)]
 
---lookupIndex :: State -> String -> Maybe Int
+lookupIndex :: State -> String -> Maybe Int
 lookupIndex state n = elemIndex n (map fst state)
 
---updateAtIndex :: [a] -> Int -> (a -> a) -> [a]
+updateAtIndex :: [a] -> Int -> (a -> a) -> [a]
 updateAtIndex lst index f = take index lst ++ [f (lst !! index)] ++ drop (index + 1) lst
 
---run :: (Code, Stack, State) -> (Code, Stack, State)
+run :: (Code, Stack, State) -> (Code, Stack, State)
 
 run ([], stack, state) = ([],stack, state) 
 -- caso de não haver mais inst
@@ -162,14 +162,14 @@ data Stm =
 type Program = [Stm]
 
 
--- compA :: Aexp -> Code
+compA :: Aexp -> Code
 compA (Val n) = [Push n]
 compA (Var a) = [Fetch a]
 compA (AddAexp e1 e2) = compA e2 ++ compA e1 ++ [Add]
 compA (SubAexp e1 e2) = compA e2 ++ compA e1 ++ [Sub]
 compA (MultAexp e1 e2) = compA e2 ++ compA e1 ++ [Mult]
 
--- compB :: Bexp -> Code
+compB :: Bexp -> Code
 compB (EquAexp e1 e2) = compA e2 ++ compA e1 ++ [Equ]
 compB (LeAexp e1 e2) = compA e2 ++ compA e1 ++ [Le]
 compB (AndBexp e1 e2) = compB e2 ++ compB e1 ++ [And]
@@ -178,7 +178,7 @@ compB (NegBexp e) = compB e ++ [Neg]
 compB (TruB) = [Tru]
 compB (FalsB) = [Fals]
 
--- compile :: Program -> Code
+compile :: Program -> Code
 compile stms = concatMap compStm stms
   where
     compStm (BranchS be stm1 stm2) = compB be ++ [Branch (compile stm1) (compile stm2)]
@@ -210,8 +210,14 @@ data StringToken =
   Str String | Tok Token 
   deriving Show
 
--- parse :: String -> Program
-parse str = parse_aux (parse_tokens (parse_tokens_aux str [])) []
+stringToken2Token :: [StringToken] -> [Token]
+stringToken2Token [] = []
+stringToken2Token (x:xs) = case x of
+  Str _  -> stringToken2Token xs
+  Tok t  -> t : stringToken2Token xs
+
+parse :: String -> Program
+parse str = parse_aux (stringToken2Token (parse_tokens (parse_tokens_aux str []))) []
 
 parse_tokens :: [StringToken] -> [StringToken]
 parse_tokens [] = []
@@ -244,7 +250,7 @@ parse_tokens_aux ('d':'o':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok D
 parse_tokens_aux ('n':'o':'t':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok NotTok])
 parse_tokens_aux (c:rest) tokens = parse_tokens_aux rest (tokens ++ [Str [c]])
 
--- parse_aux :: [StringToken] -> Program -> Program
+parse_aux :: [Token] -> Program -> Program
 parse_aux = undefined
 
 -- To help you test your parser
