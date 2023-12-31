@@ -303,12 +303,21 @@ parse_aux (VarTok name:AssignTok:rest) program = parse_aux cont (program++[Assig
   where 
     untilBreak = parse_until rest BreakTok
     cont = parse_after rest BreakTok
-parse_aux (IfTok:rest) program = program++[BranchS (parse_bexp beforeThen) (parse_aux thenSmt []) (parse_aux elseSmt [])]
+parse_aux (IfTok:rest) program = parse_aux cont (program++[BranchS (parse_bexp beforeThen) (parse_aux thenSmt []) (parse_aux elseSmt [])])
   where 
     beforeThen = parse_until rest ThenTok     
     afterThen = parse_after rest ThenTok      
     thenSmt = parse_until afterThen BreakTok  
-    elseSmt = parse_after afterThen ElseTok   
+    afterElse = parse_after afterThen ElseTok   
+    elseSmt = parse_until afterElse BreakTok   
+    cont = parse_after elseSmt BreakTok
+parse_aux (WhileTok:rest) program = parse_aux cont (program++[LoopS (parse_bexp beforeDo) [parse_aux doStm []]])
+  where 
+    beforeDo = parse_until rest DoTok
+    afterDo = parse_after rest DoTok
+    doStm = parse_until afterDo BreakTok 
+    cont = parse_after doStm BreakTok
+
 
 -- To help you test your parser
 testParser :: String -> (String, String)
