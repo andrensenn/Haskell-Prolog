@@ -198,6 +198,7 @@ data Token =
     | EqualBTok -- =
     | EqualATok -- ==
     | LETok -- <=
+    | AndTok -- and
     | TrueTok -- True
     | FalseTok -- False
     | IfTok -- if
@@ -206,6 +207,7 @@ data Token =
     | WhileTok -- while
     | DoTok -- do
     | NotTok -- not
+    | NoOpTok -- noop
     deriving (Show, Eq)
 
 data StringToken =
@@ -244,6 +246,7 @@ parse_tokens_aux (';':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok Break
 parse_tokens_aux ('=':'=':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok EqualATok])
 parse_tokens_aux ('<':'=':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok LETok])
 parse_tokens_aux ('=':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok EqualBTok])
+parse_tokens_aux ('a':'n':'d':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok AndTok])
 parse_tokens_aux ('T':'r':'u':'e':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok TrueTok])
 parse_tokens_aux ('F':'a':'l':'s':'e':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok FalseTok])
 parse_tokens_aux ('i':'f':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok IfTok])
@@ -268,34 +271,40 @@ parse_after (x:xs) obj
   | otherwise = parse_after xs obj
 
 parse_aexp :: [Token] -> Aexp
-parse_aexp (IntTok x:[]) = (Val x)
+parse_aexp [IntTok x] = (Val x)
+parse_aexp [VarTok x] = (Var x)
 --just a number
-parse_aexp (IntTok x:SubTok:IntTok y:[]) = (SubAexp (Val x) (Val y))
-parse_aexp (VarTok x:SubTok:IntTok y:[]) = (SubAexp (Var x) (Val y))
-parse_aexp (IntTok x:SubTok:VarTok y:[]) = (SubAexp (Val x) (Var y))
-parse_aexp (VarTok x:SubTok:VarTok y:[]) = (SubAexp (Var x) (Var y))
+parse_aexp (IntTok x:SubTok:rest) = (SubAexp (Val x) (parse_aexp rest))
+parse_aexp (VarTok x:SubTok:rest) = (SubAexp (Var x) (parse_aexp rest))
 -- subtracting
-parse_aexp (IntTok x:AddTok:IntTok y:[]) = (AddAexp (Val x) (Val y))
-parse_aexp (VarTok x:AddTok:IntTok y:[]) = (AddAexp (Var x) (Val y))
-parse_aexp (IntTok x:AddTok:VarTok y:[]) = (AddAexp (Val x) (Var y))
-parse_aexp (VarTok x:AddTok:VarTok y:[]) = (AddAexp (Var x) (Var y))
+parse_aexp (IntTok x:AddTok:rest) = (AddAexp (Val x) (parse_aexp rest))
+parse_aexp (VarTok x:AddTok:rest) = (AddAexp (Var x) (parse_aexp rest))
 -- adding
-parse_aexp (IntTok x:MultTok:IntTok y:[]) = (MultAexp (Val x) (Val y))
-parse_aexp (VarTok x:MultTok:IntTok y:[]) = (MultAexp (Var x) (Val y))
-parse_aexp (IntTok x:MultTok:VarTok y:[]) = (MultAexp (Val x) (Var y))
-parse_aexp (VarTok x:MultTok:VarTok y:[]) = (MultAexp (Var x) (Var y))
+parse_aexp (IntTok x:MultTok:rest) = (MultAexp (Val x) (parse_aexp rest))
+parse_aexp (VarTok x:MultTok:rest) = (MultAexp (Var x) (parse_aexp rest))
 -- multyplying
-parse_bexp :: [Token] ->Bexp
-parse_bexp(VarTok var:EqualATok:IntTok val:[]) = (EquAexp (Var var) (Val val))
-parse_bexp(IntTok val1:EqualATok:IntTok val2:[]) = (EquAexp (Val val1) (Val val2))
-parse_bexp(IntTok val:EqualATok:VarTok var:[]) = (EquAexp (Var var) (Val val))
--- == exps
-parse_bexp(VarTok var:LETok:IntTok val:[]) = (LeAexp (Var var) (Val val))
-parse_bexp(IntTok val1:LETok:IntTok val2:[]) = (LeAexp (Val val1) (Val val2))
-parse_bexp(IntTok val:LETok:VarTok var:[]) = (LeAexp (Var var) (Val val))
--- <= exps
 
+parse_bexp :: [Token] -> Bexp
+parse_bexp toks
+  | toks == [TrueTok] = TruB
+  | toks == [FalseTok] = FalsB
+  | andBexpExists toks = AndBexp (parse_bexp (parse_until toks AndTok)) (parse_bexp (parse_after toks AndTok))
+  | equalBExists toks = EquBexp (parse_bexp (parse_until toks EqualBTok)) (parse_bexp (parse_after toks EqualBTok))
+  | equalAExists toks = EquAexp (parse_aexp (parse_until toks EqualATok)) (parse_aexp (parse_after toks EqualATok))
+  | leTokExists toks = LeAexp (parse_aexp (parse_until toks LETok)) (parse_aexp (parse_after toks LETok))
+  | notExists toks = NegBexp (parse_bexp (parse_after toks NotTok))
+  | otherwise = error "No valid boolexp token found"
 
+notExists :: [Token] -> Bool
+notExists toks = elem NotTok toks
+andBexpExists :: [Token] -> Bool
+andBexpExists toks = elem AndTok toks
+equalBExists :: [Token] -> Bool
+equalBExists toks = elem EqualBTok toks
+equalAExists :: [Token] -> Bool
+equalAExists toks = elem EqualATok toks
+leTokExists :: [Token] -> Bool
+leTokExists toks = elem LETok toks
 
 parse_aux :: [Token] -> Program -> Program
 parse_aux [] program = program 
@@ -311,7 +320,7 @@ parse_aux (IfTok:rest) program = parse_aux cont (program++[BranchS (parse_bexp b
     afterElse = parse_after afterThen ElseTok   
     elseSmt = parse_until afterElse BreakTok   
     cont = parse_after elseSmt BreakTok
-parse_aux (WhileTok:rest) program = parse_aux cont (program++[LoopS (parse_bexp beforeDo) [parse_aux doStm []]])
+parse_aux (WhileTok:rest) program = parse_aux cont (program++[LoopS (parse_bexp beforeDo) (parse_aux doStm [])])
   where 
     beforeDo = parse_until rest DoTok
     afterDo = parse_after rest DoTok
