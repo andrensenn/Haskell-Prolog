@@ -276,17 +276,16 @@ parse_bexp(VarTok var:EqualATok:IntTok val:[]) = (EquAexp (Var var) (Val val))
 
 parse_aux :: [Token] -> Program -> Program
 parse_aux [] program = program 
-parse_aux (VarTok name:AssignTok:rest) program = parse_aux cont [AssignVar name (parse_aexp (untilBreak))]++program
+parse_aux (VarTok name:AssignTok:rest) program = parse_aux cont (program++[AssignVar name (parse_aexp (untilBreak))])
   where 
     untilBreak = parse_until rest BreakTok
     cont = parse_after rest BreakTok
---  parse_aux (IfTok:rest) program = [BranchS (parse_bexp beforeThen) (parse_aux thenSmt) (parse_aux elseSmt)]++program
---  where 
---    beforeThen = parse_until rest ThenTok
---    afterThen = parse_after rest ThenTok
---    thenSmt = parse_until afterThen BreakTok
---    elseSmt = parse_after thenSmt ElseTok
-
+parse_aux (IfTok:rest) program = program++[BranchS (parse_bexp beforeThen) (parse_aux thenSmt []) (parse_aux elseSmt [])]
+  where 
+    beforeThen = parse_until rest ThenTok     
+    afterThen = parse_after rest ThenTok      
+    thenSmt = parse_until afterThen BreakTok  
+    elseSmt = parse_after afterThen ElseTok   
 
 -- To help you test your parser
 testParser :: String -> (String, String)
@@ -302,7 +301,7 @@ testParser programCode = (stack2Str stack, state2Str state)
 -- testParser "if (not True and 2 <= 5 = 3 == 4) then x :=1; else y := 2;" == ("","y=2")
 -- [BranchS (NegBexp (True)  )[AssingVar x 1][AssignVar y 2]]
 -- testParser "x := 42; if x <= 43 then x := 1; else (x := 33; x := x+1;);" == ("","x=1")
--- [AssignVar x 42, BrranchS (LeAexp (x) (43)) [AssignVar x 1] [AssignVar x 33, AssignVar x (AddAexp x 1)]]
+-- [AssignVar x 42, BranchS (LeAexp (x) (43)) [AssignVar x 1] [AssignVar x 33, AssignVar x (AddAexp x 1)]]
 -- testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1;" == ("","x=2")
 -- testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1; z := x+x;" == ("","x=2,z=4")
 -- testParser "x := 44; if x <= 43 then x := 1; else (x := 33; x := x+1;); y := x*2;" == ("","x=34,y=68")
