@@ -197,6 +197,7 @@ data Token =
     | BreakTok -- ;
     | EqualBTok -- =
     | EqualATok -- ==
+    | LETok -- <=
     | TrueTok -- True
     | FalseTok -- False
     | IfTok -- if
@@ -241,6 +242,7 @@ parse_tokens_aux ('(':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok OpenT
 parse_tokens_aux (')':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok CloseTok])
 parse_tokens_aux (';':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok BreakTok])
 parse_tokens_aux ('=':'=':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok EqualATok])
+parse_tokens_aux ('<':'=':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok LETok])
 parse_tokens_aux ('=':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok EqualBTok])
 parse_tokens_aux ('T':'r':'u':'e':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok TrueTok])
 parse_tokens_aux ('F':'a':'l':'s':'e':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok FalseTok])
@@ -267,12 +269,33 @@ parse_after (x:xs) obj
 
 parse_aexp :: [Token] -> Aexp
 parse_aexp (IntTok x:[]) = (Val x)
+--just a number
 parse_aexp (IntTok x:SubTok:IntTok y:[]) = (SubAexp (Val x) (Val y))
+parse_aexp (VarTok x:SubTok:IntTok y:[]) = (SubAexp (Var x) (Val y))
+parse_aexp (IntTok x:SubTok:VarTok y:[]) = (SubAexp (Val x) (Var y))
+parse_aexp (VarTok x:SubTok:VarTok y:[]) = (SubAexp (Var x) (Var y))
+-- subtracting
 parse_aexp (IntTok x:AddTok:IntTok y:[]) = (AddAexp (Val x) (Val y))
+parse_aexp (VarTok x:AddTok:IntTok y:[]) = (AddAexp (Var x) (Val y))
+parse_aexp (IntTok x:AddTok:VarTok y:[]) = (AddAexp (Val x) (Var y))
+parse_aexp (VarTok x:AddTok:VarTok y:[]) = (AddAexp (Var x) (Var y))
+-- adding
 parse_aexp (IntTok x:MultTok:IntTok y:[]) = (MultAexp (Val x) (Val y))
-
+parse_aexp (VarTok x:MultTok:IntTok y:[]) = (MultAexp (Var x) (Val y))
+parse_aexp (IntTok x:MultTok:VarTok y:[]) = (MultAexp (Val x) (Var y))
+parse_aexp (VarTok x:MultTok:VarTok y:[]) = (MultAexp (Var x) (Var y))
+-- multyplying
 parse_bexp :: [Token] ->Bexp
 parse_bexp(VarTok var:EqualATok:IntTok val:[]) = (EquAexp (Var var) (Val val))
+parse_bexp(IntTok val1:EqualATok:IntTok val2:[]) = (EquAexp (Val val1) (Val val2))
+parse_bexp(IntTok val:EqualATok:VarTok var:[]) = (EquAexp (Var var) (Val val))
+-- == exps
+parse_bexp(VarTok var:LETok:IntTok val:[]) = (LeAexp (Var var) (Val val))
+parse_bexp(IntTok val1:LETok:IntTok val2:[]) = (LeAexp (Val val1) (Val val2))
+parse_bexp(IntTok val:LETok:VarTok var:[]) = (LeAexp (Var var) (Val val))
+-- <= exps
+
+
 
 parse_aux :: [Token] -> Program -> Program
 parse_aux [] program = program 
