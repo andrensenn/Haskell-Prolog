@@ -18,10 +18,12 @@ data StackTypes =
 type Stack = [StackTypes]
 type State = [(String, StackTypes)]
 
+--cria um stack vazia
 createEmptyStack :: Stack
 createEmptyStack = [] 
---cria um stack vazia
 
+
+--printa a lista stack separada por vírgulas
 stack2Str :: Stack -> String
 stack2Str stack = intercalate "," (map stackEleStr stack)
   where
@@ -29,10 +31,11 @@ stack2Str stack = intercalate "," (map stackEleStr stack)
       stackEleStr TT = "True"
       stackEleStr (Int n) = show n
 
-
+--criar um state vazio
 createEmptyState :: State
 createEmptyState = [] 
 
+--printa a lista state por ordem alfabética dos nomes das variáveis
 state2Str :: State -> String
 state2Str state = intercalate "," (map stateEleStr sortedState)
   where
@@ -40,15 +43,18 @@ state2Str state = intercalate "," (map stateEleStr sortedState)
     stateEleStr (a, FF) = a ++ "=False"
     stateEleStr (a, TT) = a ++ "=True"  
     sortedState = sortBy (comparing fst) state
-      --tem de ser passado para ordem alphabetica
+
+
 
 --findNinState :: Show b => State -> String -> Maybe StackTypes
 findNinState state n = lookup n state
+
 
 updateNinState :: State -> String -> StackTypes -> State
 updateNinState state n newVal = case lookupIndex state n of
   Just index -> updateAtIndex state index (\(key, _) -> (key, newVal))
   Nothing    -> state ++ [(n, newVal)]
+
 
 lookupIndex :: State -> String -> Maybe Int
 lookupIndex state n = elemIndex n (map fst state)
@@ -56,71 +62,42 @@ lookupIndex state n = elemIndex n (map fst state)
 updateAtIndex :: [a] -> Int -> (a -> a) -> [a]
 updateAtIndex lst index f = take index lst ++ [f (lst !! index)] ++ drop (index + 1) lst
 
+--função run que opera com o code, stack e state dados
 run :: (Code, Stack, State) -> (Code, Stack, State)
 
 run ([], stack, state) = ([],stack, state) 
--- caso de não haver mais inst
-
 run ((Push n):code, stack, state) = run(code, (Int n):stack, state)
--- dar push a n
-
 run ((Fetch n):code, stack, state) = case findNinState state n of
     Just value -> run(code, value:stack, state)
     Nothing -> error "Run-time error"
-
 run ((Store n):code, a:stack, state) = run(code, stack, (updateNinState state n a))
-
 run ((Add):code, (Int x):(Int y):stack, state) = run(code, (Int (x+y)):stack, state)
--- adiciona x a y e adiciona o resultado á stack
-
 run ((Sub):code, (Int x):(Int y):stack, state) = run(code, (Int (x-y)):stack, state)
--- subtrair x a y e adiciona o resultado á stack
-
 run ((Mult):code, (Int x):(Int y):stack, state) = run(code, (Int (x*y)):stack, state)
---multiplica x por y e adiciona o resultado á stack
-
 run ((Fals):code, stack, state) = run (code, (FF):stack, state)
---adiciona FF á stack
-
 run ((Tru):code, stack, state) = run (code, (TT):stack, state)
---adiciona FF á stack
-
 run ((Equ):code, x:y:stack, state) 
   | x == y = run (code, (TT):stack, state)
   | x /= y = run (code, (FF):stack, state)
   | otherwise = error "Run-time error"
---compara os dois topmost elements da stack e 
---mete TT se verdade na stack e FF otherwise
-
 run ((Le):code, x:y:stack, state)
   | x <= y = run (code, (TT):stack, state)
   | x > y = run (code, (FF):stack, state)
   | otherwise = error "Run-time error"
-
 run ((Neg):code, x:stack, state)
     | x == FF = run (code, (TT):stack, state)
     | x == TT = run (code, (FF):stack, state)
     | otherwise = error "Run-time error"
---nega o valor no topo da stack e coloca-o a stack
-
 run ((And):code, x:y:stack, state) 
   | x == TT && y == TT = run (code, (TT):stack, state)
   | x == FF || y == FF = run (code, (FF):stack, state)
   | otherwise = error "Run-time error"
---compara os dois topmost elements da stack (booleanos) e realiza a um e lógico
-
 run ((Noop):code, stack, state) = (code,stack, state)
---não percebo a utilidade disto, mas tava no enunciado..
-
 run ((Branch c1 c2):code, TT:stack, state) = run(c1 ++ code, stack, state)
 run ((Branch c1 c2):code, FF:stack, state) = run(c2 ++ code, stack, state)
---se o primeiro valor da stack for TT faz c1, se for FF faz c2
-
 run ((Loop c1 c2):code, stack , state) = run(c1++[Branch newCode [Noop]] ++ code, stack, state)
   where
     newCode = c2++[Loop c1 c2]                    
-
---se V entao vai para c2, otherwise é recursiva
 
 -- To help you test your assembler
 testAssembler :: Code -> (String, String)
@@ -161,7 +138,7 @@ data Stm =
 
 type Program = [Stm]
 
-
+--recebe uma expressão atrimétrica e retorna uma lista de intruções
 compA :: Aexp -> Code
 compA (Val n) = [Push n]
 compA (Var a) = [Fetch a]
@@ -169,6 +146,7 @@ compA (AddAexp e1 e2) = compA e2 ++ compA e1 ++ [Add]
 compA (SubAexp e1 e2) = compA e2 ++ compA e1 ++ [Sub]
 compA (MultAexp e1 e2) = compA e2 ++ compA e1 ++ [Mult]
 
+--recebe uma expressão booleana e retorna uma lista de intruções
 compB :: Bexp -> Code
 compB (EquAexp e1 e2) = compA e2 ++ compA e1 ++ [Equ]
 compB (LeAexp e1 e2) = compA e2 ++ compA e1 ++ [Le]
@@ -178,6 +156,7 @@ compB (NegBexp e) = compB e ++ [Neg]
 compB (TruB) = [Tru]
 compB (FalsB) = [Fals]
 
+--recebe uma lista de stm e retorna uma lista de instruções
 compile :: Program -> Code
 compile stms = concatMap compStm stms
   where
@@ -214,15 +193,18 @@ data StringToken =
   Str String | Tok Token 
   deriving Show
 
+--recebe uma lista de stringtokens e retorna uma lista de tokens
 stringToken2Token :: [StringToken] -> [Token]
 stringToken2Token [] = []
 stringToken2Token (x:xs) = case x of
   Str _  -> stringToken2Token xs
   Tok t  -> t : stringToken2Token xs
 
+--recebe uma string e retorna uma lista de statements
 parse :: String -> Program
 parse str = parse_aux (stringToken2Token (mergeVarToks (mergeIntToks (parse_tokens (parse_tokens_aux str []))))) []
 
+--usa parse_tokens_aux para obter uma lista de StringTokens e converte os strings que sobram em IntToks e VarToks
 parse_tokens :: [StringToken] -> [StringToken]
 parse_tokens [] = []
 parse_tokens (Str s : rest) =
@@ -231,16 +213,23 @@ parse_tokens (Str s : rest) =
     _         -> Tok (VarTok s) : parse_tokens rest
 parse_tokens (Tok t : rest) = Tok t : parse_tokens rest
 
+--recebe uma lista de string tokens e retorna uma lista de string tokens
+--junta os IntToks adjacentes para formar números com mais de um dígito
 mergeIntToks :: [StringToken] -> [StringToken]
 mergeIntToks [] = []
 mergeIntToks (Tok (IntTok a):Tok (IntTok b):rest) = mergeIntToks ([Tok (IntTok (a*10 + b))] ++ rest)
 mergeIntToks (a:rest) = [a] ++ mergeIntToks rest
 
+--recebe uma lista de string tokens e retorna uma lista de string tokens
+--junta os VarToks adjacentes para formar nomes de variáveis com mais de uma letra
 mergeVarToks :: [StringToken] -> [StringToken]
 mergeVarToks [] = []
 mergeVarToks (Tok (VarTok a):Tok (VarTok b):rest) = mergeVarToks ([Tok (VarTok (a ++ b))] ++ rest)
 mergeVarToks (a:rest) = [a] ++ mergeVarToks rest
 
+--recebe uma string e uma lista (acumulador) de string tokens
+--e retorna uma lista de string tokens
+--lê o string de input e transforma-o em tokens (à exceção dos nomes das variáveis e números)
 parse_tokens_aux :: String -> [StringToken] -> [StringToken]
 parse_tokens_aux "" tokens = tokens
 parse_tokens_aux (' ':rest) tokens = parse_tokens_aux rest tokens
@@ -267,19 +256,25 @@ parse_tokens_aux ('d':'o':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok D
 parse_tokens_aux ('n':'o':'t':rest) tokens = parse_tokens_aux rest (tokens ++ [Tok NotTok])
 parse_tokens_aux (c:rest) tokens = parse_tokens_aux rest (tokens ++ [Str [c]])
 
-
+-- recebe uma lista de tokens e um token
+-- retorna uma lista de tokens até à primeira ocorrência do token dado
 parse_until :: [Token] -> Token -> [Token] 
 parse_until [] _ = [] 
 parse_until (x:xs) obj
   | x == obj = []
   | otherwise = x:parse_until xs obj
 
+-- recebe uma lista de tokens e um token
+-- retorna uma lista de tokens depois da primeira ocorrência do token dado
 parse_after :: [Token] -> Token -> [Token] 
 parse_after [] _ = [] 
 parse_after (x:xs) obj
   | x == obj = xs
   | otherwise = parse_after xs obj
 
+
+-- recebe uma lista de tokens e um inteiro
+-- retorna uma lista de tokens quando parenteses derem match
 parse_brackets :: [Token] -> Int -> [Token]
 parse_brackets [] _ = []
 parse_brackets (tok:rest) n 
@@ -288,6 +283,9 @@ parse_brackets (tok:rest) n
   | tok == CloseTok = [CloseTok] ++ (parse_brackets rest (n-1))
   | otherwise = [tok] ++ (parse_brackets rest n)
 
+
+-- recebe uma lista de tokens e um inteiro
+-- retorna uma lista de tokens depois de parenteses darem match
 parse_after_brackets :: [Token] -> Int -> [Token]
 parse_after_brackets [] _ = []
 parse_after_brackets (tok:rest) n 
@@ -296,6 +294,8 @@ parse_after_brackets (tok:rest) n
   | tok == CloseTok = parse_after_brackets rest (n-1)
   | otherwise = parse_after_brackets rest n
 
+-- recebe uma lista de tokens e um token
+-- retorna uma lista de tokens até à primeira ocorrência do token dado fora de parênteses
 parse_until_ob :: [Token] -> Token -> Int -> [Token]
 parse_until_ob [] _ _ = []
 parse_until_ob (tok:rest) t n
@@ -303,6 +303,9 @@ parse_until_ob (tok:rest) t n
   | tok == CloseTok = [CloseTok] ++ (parse_until_ob rest t (n-1))
   | tok == t && n == 0 = []
   | otherwise = [tok] ++ (parse_until_ob rest t n)
+  
+-- recebe uma lista de tokens e um token
+-- retorna uma lista de tokens depois da primeira ocorrência do token dado fora de parênteses
 parse_after_ob :: [Token] -> Token -> Int -> [Token]
 parse_after_ob [] _ _ = []
 parse_after_ob (tok:rest) t n
@@ -311,6 +314,7 @@ parse_after_ob (tok:rest) t n
   | tok == t && n == 0 = rest
   | otherwise = parse_after_ob rest t n
 
+-- recebe uma lista de tokens e retorna uma expressão aritmétrica
 parse_aexp :: [Token] -> Aexp
 parse_aexp [IntTok x] = (Val x)
 parse_aexp [VarTok x] = (Var x)
@@ -327,6 +331,7 @@ parse_aexp toks
   | tokExistsOutsideBrackets toks MultTok 0 = (MultAexp (parse_aexp (parse_until_ob toks MultTok 0)) (parse_aexp (parse_after_ob toks MultTok 0)))
   | otherwise = error "Not a valid expression"
 
+-- recebe uma lista de tokens e retorna uma expressão booleana
 parse_bexp :: [Token] -> Bexp
 parse_bexp toks
   | (OpenTok:rest) <- toks, (parse_after_brackets rest 0) == [] = parse_bexp (parse_brackets rest 0)
@@ -341,6 +346,8 @@ parse_bexp toks
   | tokExistsOutsideBrackets toks LETok 0 = LeAexp (parse_aexp (parse_until_ob toks LETok 0)) (parse_aexp (parse_after_ob toks LETok 0))
   | otherwise = error "No valid boolexp token found"
 
+--recebe uma lista de tokens, um token e um inteiro
+--retorna um booleano verdadeiro se o token existir fora de parenteses
 tokExistsOutsideBrackets :: [Token] -> Token -> Int -> Bool
 tokExistsOutsideBrackets [] _ _ = False
 tokExistsOutsideBrackets (OpenTok:rest) tok n = tokExistsOutsideBrackets rest tok (n+1)
@@ -350,6 +357,8 @@ tokExistsOutsideBrackets (t:rest) tok 0
   | otherwise = tokExistsOutsideBrackets rest tok 0
 tokExistsOutsideBrackets (_:rest) tok n = tokExistsOutsideBrackets rest tok n
 
+--recebe uma lista de tokens e uma lista de stm (acumulador) retorna uma lista de statements
+--função recursiva auxiliar do parse
 parse_aux :: [Token] -> Program -> Program
 parse_aux [] program = program 
 parse_aux (VarTok name:AssignTok:rest) program = parse_aux cont (program++[AssignVar name (parse_aexp (untilBreak))])
