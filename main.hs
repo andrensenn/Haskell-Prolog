@@ -36,7 +36,7 @@ createEmptyState = []
 state2Str :: State -> String
 state2Str state = intercalate "," (map stateEleStr sortedState)
   where
-    stackEleStr (a, Int n) = a ++ "=" ++ show n
+    stateEleStr (a, Int n) = a ++ "=" ++ show n
     stateEleStr (a, FF) = a ++ "=False"
     stateEleStr (a, TT) = a ++ "=True"  
     sortedState = sortBy (comparing fst) state
@@ -221,15 +221,25 @@ stringToken2Token (x:xs) = case x of
   Tok t  -> t : stringToken2Token xs
 
 parse :: String -> Program
-parse str = parse_aux (stringToken2Token (parse_tokens (parse_tokens_aux str []))) []
+parse str = parse_aux (stringToken2Token (mergeVarToks (mergeIntToks (parse_tokens (parse_tokens_aux str []))))) []
 
 parse_tokens :: [StringToken] -> [StringToken]
 parse_tokens [] = []
 parse_tokens (Str s : rest) =
-  case reads s :: [(Int, String)] of
+  case reads s :: [(Integer, String)] of
     [(n, "")] -> Tok (IntTok (fromIntegral n)) : parse_tokens rest
     _         -> Tok (VarTok s) : parse_tokens rest
 parse_tokens (Tok t : rest) = Tok t : parse_tokens rest
+
+mergeIntToks :: [StringToken] -> [StringToken]
+mergeIntToks [] = []
+mergeIntToks (Tok (IntTok a):Tok (IntTok b):rest) = mergeIntToks ([Tok (IntTok (a*10 + b))] ++ rest)
+mergeIntToks (a:rest) = [a] ++ mergeIntToks rest
+
+mergeVarToks :: [StringToken] -> [StringToken]
+mergeVarToks [] = []
+mergeVarToks (Tok (VarTok a):Tok (VarTok b):rest) = mergeVarToks ([Tok (VarTok (a ++ b))] ++ rest)
+mergeVarToks (a:rest) = [a] ++ mergeVarToks rest
 
 parse_tokens_aux :: String -> [StringToken] -> [StringToken]
 parse_tokens_aux "" tokens = tokens
@@ -270,41 +280,75 @@ parse_after (x:xs) obj
   | x == obj = xs
   | otherwise = parse_after xs obj
 
+parse_brackets :: [Token] -> Int -> [Token]
+parse_brackets [] _ = []
+parse_brackets (tok:rest) n 
+  | tok == OpenTok = [OpenTok] ++ (parse_brackets rest (n+1))
+  | tok == CloseTok && n == 0 = []
+  | tok == CloseTok = [CloseTok] ++ (parse_brackets rest (n-1))
+  | otherwise = [tok] ++ (parse_brackets rest n)
+
+parse_after_brackets :: [Token] -> Int -> [Token]
+parse_after_brackets [] _ = []
+parse_after_brackets (tok:rest) n 
+  | tok == OpenTok = parse_after_brackets rest (n+1)
+  | tok == CloseTok && n == 0 = rest
+  | tok == CloseTok = parse_after_brackets rest (n-1)
+  | otherwise = parse_after_brackets rest n
+
+parse_until_ob :: [Token] -> Token -> Int -> [Token]
+parse_until_ob [] _ _ = []
+parse_until_ob (tok:rest) t n
+  | tok == OpenTok = [OpenTok] ++ (parse_until_ob rest t (n+1))
+  | tok == CloseTok = [CloseTok] ++ (parse_until_ob rest t (n-1))
+  | tok == t && n == 0 = []
+  | otherwise = [tok] ++ (parse_until_ob rest t n)
+parse_after_ob :: [Token] -> Token -> Int -> [Token]
+parse_after_ob [] _ _ = []
+parse_after_ob (tok:rest) t n
+  | tok == OpenTok = parse_after_ob rest t (n+1)
+  | tok == CloseTok = parse_after_ob rest t (n-1)
+  | tok == t && n == 0 = rest
+  | otherwise = parse_after_ob rest t n
+
 parse_aexp :: [Token] -> Aexp
 parse_aexp [IntTok x] = (Val x)
 parse_aexp [VarTok x] = (Var x)
---just a number
-parse_aexp (IntTok x:SubTok:rest) = (SubAexp (Val x) (parse_aexp rest))
-parse_aexp (VarTok x:SubTok:rest) = (SubAexp (Var x) (parse_aexp rest))
--- subtracting
-parse_aexp (IntTok x:AddTok:rest) = (AddAexp (Val x) (parse_aexp rest))
-parse_aexp (VarTok x:AddTok:rest) = (AddAexp (Var x) (parse_aexp rest))
--- adding
-parse_aexp (IntTok x:MultTok:rest) = (MultAexp (Val x) (parse_aexp rest))
-parse_aexp (VarTok x:MultTok:rest) = (MultAexp (Var x) (parse_aexp rest))
--- multyplying
+parse_aexp (OpenTok:rest) 
+  | (parse_after_brackets rest 0) == [] = parse_aexp (parse_brackets rest 0)
+  | (SubTok:last) <- (parse_after_brackets rest 0) = (SubAexp (parse_aexp (parse_brackets rest 0)) (parse_aexp last))
+  | (AddTok:last) <- (parse_after_brackets rest 0) = (AddAexp (parse_aexp (parse_brackets rest 0)) (parse_aexp last))
+  | (MultTok:last) <- (parse_after_brackets rest 0) = (MultAexp (parse_aexp (parse_brackets rest 0)) (parse_aexp last))
+  | otherwise = error "No operator or end after ()"
+
+parse_aexp toks
+  | tokExistsOutsideBrackets toks AddTok 0 = (AddAexp (parse_aexp (parse_until_ob toks AddTok 0)) (parse_aexp (parse_after_ob toks AddTok 0)))
+  | tokExistsOutsideBrackets toks SubTok 0 = (SubAexp (parse_aexp (reverse (parse_after_ob (reverse toks) SubTok 0))) (parse_aexp (reverse (parse_until_ob (reverse toks) SubTok 0))))
+  | tokExistsOutsideBrackets toks MultTok 0 = (MultAexp (parse_aexp (parse_until_ob toks MultTok 0)) (parse_aexp (parse_after_ob toks MultTok 0)))
+  | otherwise = error "Not a valid expression"
 
 parse_bexp :: [Token] -> Bexp
 parse_bexp toks
+  | (OpenTok:rest) <- toks, (parse_after_brackets rest 0) == [] = parse_bexp (parse_brackets rest 0)
+  | (OpenTok:rest) <- toks, (AndTok:last) <- (parse_after_brackets rest 0) = (AndBexp (parse_bexp (parse_brackets rest 0)) (parse_bexp last))
+  | (OpenTok:rest) <- toks, (EqualBTok:last) <- (parse_after_brackets rest 0) = (EquBexp (parse_bexp (parse_brackets rest 0)) (parse_bexp last))
   | toks == [TrueTok] = TruB
   | toks == [FalseTok] = FalsB
-  | andBexpExists toks = AndBexp (parse_bexp (parse_until toks AndTok)) (parse_bexp (parse_after toks AndTok))
-  | equalBExists toks = EquBexp (parse_bexp (parse_until toks EqualBTok)) (parse_bexp (parse_after toks EqualBTok))
-  | equalAExists toks = EquAexp (parse_aexp (parse_until toks EqualATok)) (parse_aexp (parse_after toks EqualATok))
-  | leTokExists toks = LeAexp (parse_aexp (parse_until toks LETok)) (parse_aexp (parse_after toks LETok))
-  | notExists toks = NegBexp (parse_bexp (parse_after toks NotTok))
+  | tokExistsOutsideBrackets toks AndTok 0 = AndBexp (parse_bexp (parse_until_ob toks AndTok 0)) (parse_bexp (parse_after_ob toks AndTok 0))
+  | tokExistsOutsideBrackets toks EqualBTok 0 = EquBexp (parse_bexp (parse_until_ob toks EqualBTok 0)) (parse_bexp (parse_after_ob toks EqualBTok 0))
+  | tokExistsOutsideBrackets toks NotTok 0 = NegBexp (parse_bexp (parse_after_ob toks NotTok 0))
+  | tokExistsOutsideBrackets toks EqualATok 0 = EquAexp (parse_aexp (parse_until_ob toks EqualATok 0)) (parse_aexp (parse_after_ob toks EqualATok 0))
+  | tokExistsOutsideBrackets toks LETok 0 = LeAexp (parse_aexp (parse_until_ob toks LETok 0)) (parse_aexp (parse_after_ob toks LETok 0))
   | otherwise = error "No valid boolexp token found"
 
-notExists :: [Token] -> Bool
-notExists toks = elem NotTok toks
-andBexpExists :: [Token] -> Bool
-andBexpExists toks = elem AndTok toks
-equalBExists :: [Token] -> Bool
-equalBExists toks = elem EqualBTok toks
-equalAExists :: [Token] -> Bool
-equalAExists toks = elem EqualATok toks
-leTokExists :: [Token] -> Bool
-leTokExists toks = elem LETok toks
+tokExistsOutsideBrackets :: [Token] -> Token -> Int -> Bool
+tokExistsOutsideBrackets [] _ _ = False
+tokExistsOutsideBrackets (OpenTok:rest) tok n = tokExistsOutsideBrackets rest tok (n+1)
+tokExistsOutsideBrackets (CloseTok:rest) tok n = tokExistsOutsideBrackets rest tok (n-1)
+tokExistsOutsideBrackets (t:rest) tok 0
+  | t == tok = True
+  | otherwise = tokExistsOutsideBrackets rest tok 0
+tokExistsOutsideBrackets (_:rest) tok n = tokExistsOutsideBrackets rest tok n
 
 parse_aux :: [Token] -> Program -> Program
 parse_aux [] program = program 
@@ -315,18 +359,22 @@ parse_aux (VarTok name:AssignTok:rest) program = parse_aux cont (program++[Assig
 parse_aux (IfTok:rest) program = parse_aux cont (program++[BranchS (parse_bexp beforeThen) (parse_aux thenSmt []) (parse_aux elseSmt [])])
   where 
     beforeThen = parse_until rest ThenTok     
-    afterThen = parse_after rest ThenTok      
-    thenSmt = parse_until afterThen BreakTok  
-    afterElse = parse_after afterThen ElseTok   
-    elseSmt = parse_until afterElse BreakTok   
-    cont = parse_after elseSmt BreakTok
+    afterThen = parse_after rest ThenTok
+    thenSmt = case afterThen of 
+      OpenTok:last -> parse_brackets last 0
+      _ -> parse_until afterThen BreakTok
+    afterElse = parse_after afterThen ElseTok
+    (elseSmt, cont) = case afterElse of
+      OpenTok:last -> (parse_brackets last 0, parse_after (parse_after_brackets last 0) BreakTok)
+      _ -> (parse_until afterElse BreakTok, parse_after afterElse BreakTok)
 parse_aux (WhileTok:rest) program = parse_aux cont (program++[LoopS (parse_bexp beforeDo) (parse_aux doStm [])])
   where 
     beforeDo = parse_until rest DoTok
     afterDo = parse_after rest DoTok
-    doStm = parse_until afterDo BreakTok 
-    cont = parse_after doStm BreakTok
-
+    (_:afterOpen) = afterDo
+    doStm = parse_brackets afterOpen 0 
+    cont = parse_after (parse_after_brackets afterOpen 0) BreakTok
+parse_aux (BreakTok:rest) program = parse_aux rest program
 
 -- To help you test your parser
 testParser :: String -> (String, String)
@@ -335,14 +383,9 @@ testParser programCode = (stack2Str stack, state2Str state)
 
 -- Examples:
 -- testParser "x := 5; x := x - 1;" == ("","x=4")
--- [VarTok x, AssignTok, ValTok 5, VarTok x, AssignTok x, VarTok x, SubTok, ValTok 5]
--- [AssignVar x 5, AssignVar x (SubAexp x 1)]
 -- testParser "x := 0 - 2;" == ("","x=-2")
--- [AssingVar x ( SubAexp 0 2)]
 -- testParser "if (not True and 2 <= 5 = 3 == 4) then x :=1; else y := 2;" == ("","y=2")
--- [BranchS (NegBexp (True)  )[AssingVar x 1][AssignVar y 2]]
 -- testParser "x := 42; if x <= 43 then x := 1; else (x := 33; x := x+1;);" == ("","x=1")
--- [AssignVar x 42, BranchS (LeAexp (x) (43)) [AssignVar x 1] [AssignVar x 33, AssignVar x (AddAexp x 1)]]
 -- testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1;" == ("","x=2")
 -- testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1; z := x+x;" == ("","x=2,z=4")
 -- testParser "x := 44; if x <= 43 then x := 1; else (x := 33; x := x+1;); y := x*2;" == ("","x=34,y=68")
@@ -352,6 +395,30 @@ testParser programCode = (stack2Str stack, state2Str state)
 -- testParser "x := 2; y := (x - 3)*(4 + 2*3); z := x +x*(2);" == ("","x=2,y=-10,z=6")
 -- testParser "i := 10; fact := 1; while (not(i == 1)) do (fact := fact * i; i := i - 1;);" == ("","fact=3628800,i=1")
 
---main :: IO ()
---main = do
---    putStrLn "Hello, World!"
+-- main :: IO ()
+-- main = do
+--  let result1 = testParser "x := 5; x := x - 1;"
+--  let result2 = testParser "x := 0 - 2;"
+--  let result3 = testParser "if (not True and 2 <= 5 = 3 == 4) then x :=1; else y := 2;"
+--  let result4 = testParser "x := 42; if x <= 43 then x := 1; else (x := 33; x := x+1;);"
+--  let result5 = testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1;"
+--  let result6 = testParser "x := 42; if x <= 43 then x := 1; else x := 33; x := x+1; z := x+x;"
+--  let result7 = testParser "x := 44; if x <= 43 then x := 1; else (x := 33; x := x+1;); y := x*2;"
+--  let result8 = testParser "x := 42; if x <= 43 then (x := 33; x := x+1;) else x := 1;"
+--  let result9 = testParser "if (1 == 0+1 = 2+1 == 3) then x := 1; else x := 2;"
+--  let result10 = testParser "if (1 == 0+1 = (2+1 == 4)) then x := 1; else x := 2;"
+--  let result11 = testParser "x := 2; y := (x - 3)*(4 + 2*3); z := x +x*(2);"
+--  let result12 = testParser "i := 10; fact := 1; while (not(i == 1)) do (fact := fact * i; i := i - 1;);"
+
+--  print result1
+--  print result2
+--  print result3
+--  print result4
+--  print result5
+--  print result6
+--  print result7
+--  print result8
+--  print result9
+--  print result10
+--  print result11
+--  print result12
